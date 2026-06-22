@@ -1,0 +1,35 @@
+#Commands to use
+#https://www.hackingarticles.in/ctf-challenges-walkthrough/
+rustscan -a 192.168.1.1
+
+Scan a specific port range: 
+rustscan -a 192.168.1.1 --range 1-1000
+Scan multiple IPs: 
+rustscan -a 192.168.1.1,192.168.1.5
+Scan a subnet (CIDR): 
+rustscan -a 192.168.1.0/24
+Speed/Batch Tuning: If RustScan is missing ports due to system limitations, you can adjust the batch size (-b) and timeout (-T):bash
+rustscan -a 192.168.1.1 -b 500 -T 1500
+
+
+who		#list all current users and their active terminal sessions
+ps aux | grep pts           #lists process controlling terminals
+pkill -9 -t pts/1           #kills pts/1
+kill -9 PID					#terminate their session using their process ID instead
+
+ss -tupn    #List all active network connections and process running them
+netstat -tupn       
+
+#Change user and root passwords immediately using a single line
+echo -e "yournewpassword\nyournewpassword" | passwd root
+
+find / -type f \( -name "flag*.txt" -o -name "user.txt" -o -name "root.txt" \) -exec head -n +1 {} \; 2>/dev/null
+
+#Remove SUID permissions from binary files that players abuse for privilege #escalation (like find, base64, or cp):
+  ```bash
+  chmod -s $(which find)
+#Check common persistence locations like /etc/cron*, /etc/crontab, and #authorized SSH keys inside /root/.ssh/authorized_keys to ensure opponents #haven't left a backdoor to get right back in.
+
+
+echo username > /home/king.txt
+echo username > /root/king.txt
