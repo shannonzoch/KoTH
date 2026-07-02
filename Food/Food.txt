@@ -1,0 +1,82 @@
+
+22/tcp    open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+3306/tcp  open  mysql   MySQL 5.7.29-0ubuntu0.18.04.1
+						MySQL_Server_5.7.29 
+15065/tcp open  http    Golang net/http server (Go-IPFS json-rpc or InfluxDB API)
+16109/tcp open  unknown
+46969/tcp open  telnet  Linux telnetd
+
+CVE-2021-2144 MySQL_Server_5.7.29 
+
+nc -nv $tip 3306
+Connection to 10.144.158.235 3306 port [tcp/*] succeeded!
+[
+]Ov^RtQ���C4f2Wj*gCmysql_native_password^C
+
+nc -nv $tip 15065
+Connection to 10.144.158.235 15065 port [tcp/*] succeeded!
+l
+HTTP/1.1 400 Bad Request
+Content-Type: text/plain; charset=utf-8
+Connection: close
+
+400 Bad Request
+
+curl http://$tip:15065
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Host monitoring</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <h1>Site down for maintenance</h1>
+    <p>Blame Dan, he keeps messing with the prod servers.</p>
+15065
+
+1. The Directory Traversal (High Priority)
+The path normalization exploit you found on /etc/passwd also appears explicitly on the /cgi-bin/ directory:
+Plaintext
+301 -    0B  - /cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/etc/passwd  ->  /etc/passwd
+This confirms the entire server or framework (potentially something like an unpatched Apache HTTP Server vulnerability like CVE-2021-41773 / CVE-2021-42013) is vulnerable to directory traversal.
+Since you can read arbitrary files:
+Target /etc/passwd: Look for user accounts on the box to get valid usernames for brute-forcing SSH (Port 22 from your initial scan).
+Target Source Code / Configs: Try to read the web application's configuration files or environment files (e.g., .env, config.php, or settings files) by traversing from known directory structures to find database passwords or API keys.
+Target SSH Keys: Look for /.ssh/id_rsa or /.ssh/authorized_keys for any users you discovered in /etc/passwd.
+
+curl http://$tip:15065/monitor/
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Host monitoring</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="screen" href="main.css">
+    <script src="main.js"></script>
+</head>
+
+<body onload="onLoad()">
+    <h1>Food production server monitoring</h1>
+    <!-- Lately, our maintenance engineer keeps complaining that people are turning the servers off -->
+    <!-- Hopefully this tool should be enough to check on them, and it only took a few minutes to build! -->
+    <section id="formSection">
+        <form id="pingForm" onsubmit="pingHost()">
+            <label>Enter an IP address to ping:</label><br />
+            <input id="hostToPing" type="text">
+            <button type="button" onclick="pingHost()">Ping</button>
+        </form>
+    </section>
+    <pre><code id="outputSection">
+    </code></pre>
+    <footer>
+        <hr />
+        <p>Hopefully this will stop Dan from crashing the servers, now that we can monitor them.</p>
+    </footer>
+</body>
+
+</html>root@ip-10-144-111-221:~# 

